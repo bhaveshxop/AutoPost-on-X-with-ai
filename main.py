@@ -44,10 +44,12 @@ class MotivationalBot:
                 'api_secret': os.getenv('TWITTER_API_SECRET'),
                 'access_token': os.getenv('TWITTER_ACCESS_TOKEN'),
                 'access_token_secret': os.getenv('TWITTER_ACCESS_TOKEN_SECRET'),
-                'bearer_token': os.getenv('TWITTER_BEARER_TOKEN')
+                'bearer_token': os.getenv('TWITTER_BEARER_TOKEN'),
+                'client_id': os.getenv('TWITTER_CLIENT_ID'),
+                'client_secret': os.getenv('TWITTER_CLIENT_SECRET')
             }
             
-            missing_creds = [k for k, v in twitter_credentials.items() if not v]
+            missing_creds = [k for k, v in twitter_credentials.items() if not v and k in ['api_key', 'api_secret', 'access_token', 'access_token_secret']]
             if missing_creds:
                 raise ValueError(f"Missing Twitter credentials: {missing_creds}")
             

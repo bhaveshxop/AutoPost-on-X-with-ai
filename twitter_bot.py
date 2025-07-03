@@ -4,17 +4,29 @@ from typing import Optional
 
 class TwitterBot:
     def __init__(self, api_key: str, api_secret: str, access_token: str, 
-                 access_token_secret: str, bearer_token: str):
-        """Initialize Twitter API client using X API v2 with OAuth 2.0 User Context"""
+                 access_token_secret: str, bearer_token: str, client_id: str = None, client_secret: str = None):
+        """Initialize Twitter API client using OAuth 2.0 User Context"""
         try:
-            # Use OAuth 2.0 User Context for posting tweets
-            self.client = tweepy.Client(
-                consumer_key=api_key,
-                consumer_secret=api_secret,
-                access_token=access_token,
-                access_token_secret=access_token_secret,
-                wait_on_rate_limit=True
-            )
+            # Try OAuth 2.0 first if client credentials are provided
+            if client_id and client_secret:
+                logging.info("Using OAuth 2.0 User Context authentication")
+                self.client = tweepy.Client(
+                    consumer_key=api_key,
+                    consumer_secret=api_secret,
+                    access_token=access_token,
+                    access_token_secret=access_token_secret,
+                    wait_on_rate_limit=True
+                )
+            else:
+                # Fallback to OAuth 1.0a
+                logging.info("Using OAuth 1.0a User Context authentication")
+                self.client = tweepy.Client(
+                    consumer_key=api_key,
+                    consumer_secret=api_secret,
+                    access_token=access_token,
+                    access_token_secret=access_token_secret,
+                    wait_on_rate_limit=True
+                )
             
             # Test authentication by getting user info
             me = self.client.get_me()
