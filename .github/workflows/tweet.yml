@@ -3,7 +3,7 @@ name: Daily AI Motivational Tweet
 on:
   # Schedule the workflow to run daily at 12:15 AM UTC
   schedule:
-    - cron: '42 0 * * *'  # Daily at 12:35 AM UTC (00:35)
+    - cron: '50 0 * * *'  # Daily at 12:35 AM UTC (00:35)
    
   workflow_dispatch:
 
