@@ -1,0 +1,160 @@
+name: Test A Tweet
+
+on:
+  # Only allow manual triggering for testing
+  workflow_dispatch:
+    inputs:
+      theme:
+        description: 'Theme for the quote (optional)'
+        required: false
+        default: ''
+        type: string
+      max_length:
+        description: 'Maximum quote length'
+        required: false
+        default: '260'
+        type: string
+
+jobs:
+  test-tweet:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Create posted_quotes.json if not exists
+      run: |
+        if [ ! -f posted_quotes.json ]; then
+          echo "[]" > posted_quotes.json
+        fi
+        
+    - name: Test tweet generation and posting
+      env:
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
+        TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
+        TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
+        TWITTER_ACCESS_TOKEN_SECRET: ${{ secrets.TWITTER_ACCESS_TOKEN_SECRET }}
+        MAX_QUOTE_LENGTH: ${{ github.event.inputs.max_length || '260' }}
+        QUOTE_THEMES: ${{ github.event.inputs.theme || 'coding,debugging,software engineering,programming,tech career,developer life,algorithms,problem solving,clean code,continuous learning,tech innovation,git workflow' }}
+      run: |
+        echo "🧪 Testing tweet generation and posting..."
+        echo "📋 Theme: ${{ github.event.inputs.theme || 'Random from default themes' }}"
+        echo "📏 Max length: ${{ github.event.inputs.max_length || '260' }}"
+        echo ""
+        
+        python -c "
+        from main import MotivationalBot
+        import logging
+        import sys
+        import os
+        
+        # Configure logging for GitHub Actions
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(levelname)s - %(message)s',
+            handlers=[logging.StreamHandler(sys.stdout)]
+        )
+        
+        try:
+            print('🤖 Initializing test bot...')
+            bot = MotivationalBot()
+            print(f'📱 Connected to Twitter: @{bot.username}')
+            
+            # Use custom theme if provided
+            theme = '${{ github.event.inputs.theme }}'
+            if not theme.strip():
+                theme = None
+                print('🎲 Using random theme from defaults')
+            else:
+                print(f'🎯 Using custom theme: {theme}')
+            
+            # Generate quote
+            max_length = int('${{ github.event.inputs.max_length }}' or '260')
+            quote = bot.generate_quote(theme=theme, max_length=max_length)
+            print(f'✍️ Generated quote: {quote}')
+            print(f'📊 Quote length: {len(quote)} characters')
+            
+            # Check for duplicates
+            if bot.is_duplicate(quote):
+                print('⚠️ This quote was already posted before')
+            else:
+                print('✅ Quote is unique')
+            
+            # Post the tweet
+            print('📤 Posting test tweet...')
+            result = bot.post_tweet(quote)
+            
+            if result and result.get('success'):
+                print(f'✅ Test tweet posted successfully!')
+                print(f'🔗 Tweet ID: {result[\"id\"]}')
+                print(f'📝 Content: {result[\"text\"]}')
+                
+                # Save to posted quotes
+                bot.posted_quotes.add(quote)
+                bot.save_posted_quotes()
+                print('💾 Quote saved to prevent future duplicates')
+                
+                sys.exit(0)
+            else:
+                print('❌ Failed to post test tweet')
+                sys.exit(1)
+                
+        except Exception as e:
+            print(f'❌ Test failed: {e}')
+            import traceback
+            traceback.print_exc()
+            sys.exit(1)
+        "
+        
+    - name: Commit updated posted_quotes.json (if tweet was posted)
+      if: success()
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Test Bot"
+        
+        # Check if there are changes to commit
+        if git diff --quiet posted_quotes.json; then
+          echo "ℹ️ No changes to posted_quotes.json"
+        else
+          echo "📝 Updating posted_quotes.json with test quote"
+          git add posted_quotes.json
+          git commit -m "🧪 Update posted quotes after test tweet $(date +'%Y-%m-%d %H:%M UTC') [skip ci]"
+          git push
+        fi
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Test summary
+      if: always()
+      run: |
+        echo "## 🧪 Test Tweet Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- **Workflow**: Test A Tweet" >> $GITHUB_STEP_SUMMARY
+        echo "- **Triggered**: $(date)" >> $GITHUB_STEP_SUMMARY
+        echo "- **Theme**: ${{ github.event.inputs.theme || 'Random' }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Max Length**: ${{ github.event.inputs.max_length || '260' }} characters" >> $GITHUB_STEP_SUMMARY
+        if [ "${{ job.status }}" == "success" ]; then
+          echo "- **Result**: ✅ Success - Tweet posted" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- **Result**: ❌ Failed - Check logs" >> $GITHUB_STEP_SUMMARY
+        fi
+        echo "- **Note**: This was a manual test run" >> $GITHUB_STEP_SUMMARY
