@@ -3,13 +3,8 @@ name: Daily AI Motivational Tweet
 on:
   # Schedule the workflow to run daily at 12:15 AM UTC
   schedule:
-    - cron: '31 0 * * *'  # Daily at 12:15 AM UTC (00:15)
-    # Alternative schedules (uncomment and modify as needed):
-    # - cron: '0 */6 * * *'    # Every 6 hours
-    # - cron: '0 9,21 * * *'   # Twice daily (9 AM and 9 PM UTC)
-    # - cron: '0 12 * * 1-5'   # Weekdays at noon UTC
-  
-  # Allow manual triggering of the workflow
+    - cron: '35 0 * * *'  # Daily at 12:35 AM UTC (00:35)
+   
   workflow_dispatch:
 
 jobs:
